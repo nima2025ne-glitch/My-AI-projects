@@ -1,50 +1,48 @@
-import numpy as np
 import pandas as pd
-from tensorflow.keras.preprocessing.text import Tokenizer
-from sklearn.preprocessing import LabelEncoder
+from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split
-from tensorflow.keras.preprocessing.sequence import pad_sequences
-from tensorflow.keras.layers import Dense, LSTM, Embedding
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score
+ds = pd.read_csv("s.csv")
+ds.head()
+toNum = TfidfVectorizer()
+x = ds['comment_cleaned']
+y = ds['label']
+x2 = toNum.fit_transform(x)
+xtrain, xtest, ytrain, ytest = train_test_split(x2, y, test_size=0.2, random_state=42)
+model = SVC(kernel='linear')
+model.fit(xtrain, ytrain)
+ypred = model.predict(xtest)
+print("دقت مدل:", accuracy_score(ytest, ypred))
 from tensorflow.keras.models import Sequential
-import tensorflow as tf
+from tensorflow.keras.layers import Dense
 
-# بارگذاری داده
-ds = pd.read_csv("behdadkarimi/all.csv")
-
-# حذف ستون‌های نامعلوم و بی‌ربط
-ds = ds.drop(['replyCount', 'retweetCount', 'likeCount', 'quoteCount', 'hashtags', 'sourceLabel'], axis=1)
-
-# رمزگذاری برچسب‌های عاطفه
-to_numeric = LabelEncoder()
-ds['emotion'] = to_numeric.fit_transform(ds['emotion'])
-y = ds['emotion']
-x = ds['tweet']
-
-# توکنیزه کردن متن‌ها
-tokenizer = Tokenizer(num_words=10000)
-tokenizer.fit_on_texts(x)
-sequences = tokenizer.texts_to_sequences(x)
-x2 = pad_sequences(sequences, maxlen=500)
-
-# تقسیم داده‌ها به آموزش و آزمون
-x_train, x_test, y_train, y_test = train_test_split(x2, y, test_size=0.2, random_state=42)
-
-# کدگذاری برچسب‌ها به صورت one-hot
-num_classes = ds['emotion'].nunique()
-
-# ساخت مدل
 model = Sequential()
-model.add(Embedding(10000, 64))
-model.add(LSTM(64))
-model.add(Dense(64, activation='relu'))
-model.add(Dense(num_classes, activation='softmax'))  # لایه خروجی با softmax برای دسته‌بندی چندکلاسه
 
-# کامپایل کردن مدل
+model.add(Dense(256, activation='relu', input_dim=12002))
+
+model.add(Dense(256, activation='relu'))
+model.add(Dense(256, activation='relu'))
+model.add(Dense(128, activation='relu'))
+model.add(Dense(64, activation='relu'))
+
+model.add(Dense(3, activation='softmax'))
+
 model.compile(
     optimizer='adam',
-    loss='sparse_categorical_crossentropy',  # استفاده از loss مناسب برای برچسب‌های عددی
+    loss='SparseCategoricalCrossentropy',
     metrics=['accuracy']
 )
 
-# آموزش مدل
-history = model.fit(x_train, y_train, epochs=50, validation_data=(x_test, y_test))
+model.fit(xtrain,ytrain,epochs=24,validation_data=(xtest,ytest))
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, LSTM, Embedding
+
+text = input("نظر خود را وارد کنید: ")
+tn = toNum.transform([text])  
+answer = model.predict(tn)
+
+if answer[0] == 1:
+    print("+")
+else:
+    print("-")
